@@ -2,7 +2,9 @@ from tkinter import *
 import serial
 import logging
 import time
+import threading
 import numpy as np
+import modern_robotics as mr
 
 class Paint(object):
     LINE_WIDTH = 3
@@ -85,21 +87,37 @@ class MotorController:
     MX_64_MAXPOS = 4095
     MX_64_MINANG = 0
     MX_64_MAXANG = 360
+    N_MOTORS = 5
 
     def __init__(self, COM: str, baud: int):
         self.COM = COM
         self.baud = baud
         self.s = serial.Serial(COM, baud)
 
+        self.s_lock = threading.Lock()
+        # self.pos_thread = threading.Thread(target=self.readPositions)
+        # self.stop_reading = False
+        # self.pos_thread.start()
+
 
     def __del__(self):
-        self.s.close()
+        with self.s_lock:
+            self.s.close()
         print(f"Port {self.COM} closed successfully")
 
 
     def sendPosition(self, id: int, pos: int):
-        self.s.write(pos.to_bytes(2, "little"))
-        self.s.write(id.to_bytes(1, "little"))
+        with self.s_lock:
+            self.s.write(pos.to_bytes(2, "little"))
+            self.s.write(id.to_bytes(1, "little"))
+
+    
+    def readPositions(self):
+        while not self.stop_reading:
+            time.sleep(0.5)
+            with self.s_lock:
+                for id in range(self.N_MOTORS):
+                    pos = self.s.read(2)
 
 
     def setAngle(self, id: int, angle: float):
@@ -130,17 +148,24 @@ class MotorController:
 class Robot:
 
     def __init__(self):
+        self.M = np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 5.48],
+            [0, 0, 1, 60.26],
+            [0, 0, 0, 1]
+        ])
+
         r1 = np.array([0, 0, 0])
         r2 = np.array([0, -2.35, 3.1])
-        r3 = np.array([0, -1.65, 21.3])
-        r4 = np.array([-2.65, 0.45, 37.76])
-        r5 = np.array([-2.65, 2.55, 40.36])
+        r3 = np.array([0, -1.95, 21.3])
+        r4 = np.array([0, -1.95, 36.66])
+        r5 = np.array([-2.4, 0.45, 44.96])
 
         w1 = np.array([0, 0, 1])
         w2 = np.array([0, 1, 0])
         w3 = np.array([0, -1, 0])
-        w4 = np.array([0, 0, 1])
-        w5 = np.array([0, 1, 0])
+        w4 = np.array([0, 1, 0])
+        w5 = np.array([1, 0, 0])
 
         v1 = np.cross(r1, w1)
         v2 = np.cross(r2, w2)
@@ -156,18 +181,28 @@ class Robot:
 
 
 if __name__ == '__main__':
-    # Paint()
-    # mc = MotorController("COM6", 57600)
+    r = Robot()
+    T = np.array([
+        [0, 0, 1, 30],
+        [0, 1, 0, 6],
+        [-1, 0, 0, 40],
+        [0, 0, 0, 1]
+    ])
+    thetalist0 = np.array([0, 0, 0, 0, 0])
+    eomg = 0.0872
+    ev = 2
+    [thetalist, success] = mr.IKinSpace(
+    np.array([r.S1, r.S2, r.S3, r.S4, r.S5]).T,
+    r.M, T,
+    thetalist0,
+    eomg, ev)
+    print(thetalist, success)
 
+    # mc = MotorController("COM7", 57600)
     # time.sleep(3)
-
     # mc.setAngles([0, 0, 0, 0, 0, 0])
     # time.sleep(3)
-
-    # mc.setAngles(6 * [30])
-
-    r = Robot()
-    print(r.S1)
+    # mc.setAngles(np.rad2deg(np.array([3.53403034e-02, -5.84393625e+01, -3.59305760e+01,  2.40795828e+01,  3.53403034e-02])) )
 
     # f = 0.3 # Hz
     # omega = 2 * math.pi * f # rad/s

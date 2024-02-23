@@ -3,6 +3,7 @@
 #define OPENCM_DEVICE "1"
 #define MOTOR_BAUDRATE  1000000
 #define SERIAL_BAUDRATE 57600
+#define POS_FEEDBACK_RATE 500000 // in microseconds
 
 const size_t N_ID = 5;
 const uint8_t ID[N_ID] = {1, 2, 3, 4, 5};
@@ -11,9 +12,10 @@ uint8_t pos_low = 0, pos_high = 0;
 uint8_t motor_id;
 uint32_t get_data_1 = 0, get_data_2 = 0;
 
-int32_t target_position = 0, current_position = 0;
+int32_t target_position = 0;
 
 DynamixelWorkbench dxl_wb;
+HardwareTimer Timer(TIMER_CH1);
 
 void setup() {
   Serial.begin(SERIAL_BAUDRATE);
@@ -47,6 +49,11 @@ void setup() {
       Serial.println(log);
     }
   }
+
+//  Timer.stop();
+//  Timer.setPeriod(POS_FEEDBACK_RATE);
+//  Timer.attachInterrupt(sendPositions);
+//  Timer.start();
 }
 
 void loop() {
@@ -55,18 +62,18 @@ void loop() {
     pos_high = Serial.read();
     motor_id = Serial.read();
 
-    target_position = (int32_t)( (pos_high << 8) | pos_low);
+    target_position = (int32_t)( (pos_high << 8) | pos_low);    
     dxl_wb.goalPosition(motor_id, target_position);
+  } 
+}
 
-//    do {
-//      dxl_wb.getPresentPositionData(motor_id, &current_position);
-////      delay(100);
-//    } while (abs(current_position - target_position) > 5);
-//
-//    dxl_wb.readRegister(motor_id, (uint16_t)36, (uint16_t)1, &get_data_1);
-//    dxl_wb.readRegister(motor_id, (uint16_t)37, (uint16_t)1, &get_data_2);
-//
-//    Serial.write((int8_t) get_data_1);
-//    Serial.write((int8_t) get_data_2);
+void sendPositions(void) {
+  for (int i = 0; i < N_ID; ++i) {
+    dxl_wb.readRegister(i+1, (uint16_t)36, (uint16_t)1, &get_data_1);
+    dxl_wb.readRegister(i+1, (uint16_t)37, (uint16_t)1, &get_data_2);
+
+    // write position
+    Serial.write((int8_t) get_data_1);
+    Serial.write((int8_t) get_data_2);
   }
 }
