@@ -13,27 +13,27 @@ if __name__ == '__main__':
     console.setFormatter(logging.Formatter('%(relativeCreated)6d %(threadName)s %(message)s'))
     logging.getLogger('').addHandler(console)
 
-    # Paint("COM7", 57600)
+    Paint("COM7", 57600)
     # Paint(None, None)
 
 
-    r = Robot()
-    T = np.array([
-        [0, 0, 1, -30.4],
-        [0, 1, 0, 36.25],
-        [-1, 0, 0, 15.45],
-        [0, 0, 0, 1]
-    ])
-    thetalist0 = np.array([-0.01745329,  0.10471976, -1.32645023, -0.17453293, -0.01745329])#np.deg2rad(np.array([-1, 6, -76, -10, -1]))
-    eomg = 0.0872
-    ev = 2
-    [thetalist, success] = mr.IKinSpace(
-        np.array([r.S1, r.S2, r.S3, r.S4, r.S5]).T,
-        r.M, T,
-        thetalist0,
-        eomg, ev
-    )
-    print(np.rad2deg(thetalist), success)
+    # r = Robot()
+    # T = np.array([
+    #     [0, 0, 1, -30.4],
+    #     [0, 1, 0, 36.25],
+    #     [-1, 0, 0, 15.45],
+    #     [0, 0, 0, 1]
+    # ])
+    # thetalist0 = np.array([-0.01745329,  0.10471976, -1.32645023, -0.17453293, -0.01745329])#np.deg2rad(np.array([-1, 6, -76, -10, -1]))
+    # eomg = 0.0872
+    # ev = 2
+    # [thetalist, success] = mr.IKinSpace(
+    #     np.array([r.S1, r.S2, r.S3, r.S4, r.S5]).T,
+    #     r.M, T,
+    #     thetalist0,
+    #     eomg, ev
+    # )
+    # print(np.rad2deg(thetalist), success)
 
     # T = mr.FKinSpace(r.M, np.array([r.S1, r.S2, r.S3, r.S4, r.S5]).T, np.array([np.pi/2, np.pi/2, np.pi/2, np.pi/2, np.pi/2]))
     # print(T)

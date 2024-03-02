@@ -78,7 +78,7 @@ class Robot:
     WB_HEIGHT = 25.4 # centimeters
 
     #vector from S to top left corner of whiteboard 
-    p_sw = [40.412, 18.595, 25.4] # centimeters
+    p_sw = [40.41, 16.04, 25.2] # centimeters
 
     PATH_LEAD_IN = 5 # centimeters
     PATH_LEAD_OUT = 5 # centimeters
@@ -90,9 +90,9 @@ class Robot:
             self.mc = None
 
         self.M = np.array([
-            [1, 0, 0, 0],
+            [1, 0, 0, -1.45],
             [0, 1, 0, 5.48],
-            [0, 0, 1, 60.26],
+            [0, 0, 1, 59.96],
             [0, 0, 0, 1]
         ])
 
@@ -103,11 +103,21 @@ class Robot:
             [0, 0, 0, 1]
         ])
 
+        # initial position - touching middle of the board
+        self.T = np.array([
+            [0, 0, 1,40.41],
+            [0, 1, 0,6.35],
+            [-1, 0, 0,12.86],
+            [0, 0, 0, 1]
+        ])
+        # joint angles at initial position above
+        self.thetalist = np.deg2rad(np.array([2, 13, -115, -38, 2]))
+
         r1 = np.array([0, 0, 0])
         r2 = np.array([0, -2.35, 3.1])
         r3 = np.array([0, -1.95, 21.3])
-        r4 = np.array([0, -1.95, 36.66])
-        r5 = np.array([-2.4, 0.45, 44.96])
+        r4 = np.array([-1.45, -1.95, 36.36])
+        r5 = np.array([-3.85, 0.45, 44.66])
 
         w1 = np.array([0, 0, 1])
         w2 = np.array([0, 1, 0])
@@ -127,6 +137,52 @@ class Robot:
         self.S4 = np.concatenate((w4, v4))
         self.S5 = np.concatenate((w5, v5))
 
+    def move_next_point(self):
+        thetalist0 = self.thetalist
+        eomg = np.deg2rad(3)
+        ev = 1
+        [thetalist, success] = mr.IKinSpace(
+            np.array([self.S1, self.S2, self.S3, self.S4, self.S5]).T,
+            self.M, self.T,
+            thetalist0,
+            eomg, ev
+        )
+        self.thetalist = thetalist
+        if success:
+            self.mc.setAngles(list(np.rad2deg(self.thetalist)))
+            logging.info(f"Successfully solved for T:\n{self.T}")
+        else:
+            logging.info("IK failed to converge")
+
+    def left(self):
+        # increment y
+        self.T[1, 3] += 1
+        self.move_next_point()
+
+    def right(self):
+        # decrement y
+        self.T[1, 3] -= 1
+        self.move_next_point()
+
+    def forward(self):
+        # increment x
+        self.T[0, 3] += 1
+        self.move_next_point()
+
+    def backward(self):
+        # decrement x
+        self.T[0, 3] -= 1
+        self.move_next_point()
+
+    def up(self):
+        # increment z
+        self.T[2, 3] += 1
+        self.move_next_point()
+
+    def down(self):
+        # decrement z
+        self.T[2, 3] -= 1
+        self.move_next_point()
 
     def planTrajectory(self, paths: list[Path], CANVAS_WIDTH, CANVAS_HEIGHT):
         trajectory = None

@@ -47,6 +47,7 @@ class Paint(object):
         self.c.bind('<B1-Motion>', self.mouse_drag)
         self.c.bind('<ButtonRelease-1>', self.mouse_release)
         self.c.bind('<ButtonPress-1>', self.mouse_press)
+        self.root.bind('<KeyPress>', self.key_press)
 
     def init_robot(self):
         try:
@@ -55,6 +56,7 @@ class Paint(object):
             logging.error(e)
         else:
             logging.info(f"Motor comms established at {self.COM}::{self.baud}")
+
 
     def toggle_grabber(self):
         self.draw_button["state"] = "normal"
@@ -71,8 +73,10 @@ class Paint(object):
                 self.c.delete(line.id)
         self.paths = []
 
+
     def stop_drawing(self):
         pass
+
 
     def mouse_drag(self, event):
         if self.old_x and self.old_y:
@@ -84,6 +88,7 @@ class Paint(object):
 
         self.old_x = event.x
         self.old_y = event.y
+
 
     def mouse_release(self, event):
         self.old_x, self.old_y = None, None
@@ -97,3 +102,23 @@ class Paint(object):
         assert(self.current_path is None)
         self.current_path = Path()
         logging.info("Button press event")
+
+    
+    def key_press(self, event):
+        c = event.char
+        logging.info(f"Key pressed: {c}")
+
+        if c == 'w':
+            self.r.forward()
+        elif c == 's':
+            self.r.backward()
+        elif c == 'a':
+            self.r.left()
+        elif c == 'd':
+            self.r.right()
+        elif c == 'r':
+            self.r.up()
+        elif c == 'f':
+            self.r.down()
+
+        
