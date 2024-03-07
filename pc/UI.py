@@ -59,11 +59,11 @@ class Paint(object):
 
 
     def toggle_grabber(self):
-        self.draw_button["state"] = "normal"
+        self.r.toggleGrabber()
+        logging.info(f"Grabber toggled. New grabber open: {self.r.grabber_open}")
 
 
     def draw_letters(self):
-        self.draw_button["state"] = "disabled"
         self.r.planTrajectory(self.paths, self.CANVAS_WIDTH, self.CANVAS_HEIGHT)
         
 

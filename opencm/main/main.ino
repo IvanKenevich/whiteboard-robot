@@ -5,8 +5,8 @@
 #define SERIAL_BAUDRATE 57600
 #define POS_FEEDBACK_RATE 500000 // in microseconds
 
-const size_t N_ID = 5;
-const uint8_t ID[N_ID] = {1, 2, 3, 4, 5};
+const size_t N_ID = 6;
+const uint8_t ID[N_ID] = {1, 2, 3, 4, 5, 6};
 
 uint8_t pos_low = 0, pos_high = 0;
 uint8_t motor_id;
@@ -67,13 +67,13 @@ void loop() {
   } 
 }
 
-void sendPositions(void) {
-  for (int i = 0; i < N_ID; ++i) {
-    dxl_wb.readRegister(i+1, (uint16_t)36, (uint16_t)1, &get_data_1);
-    dxl_wb.readRegister(i+1, (uint16_t)37, (uint16_t)1, &get_data_2);
+// void sendPositions(void) {
+//   for (int i = 0; i < N_ID; ++i) {
+//     dxl_wb.readRegister(i+1, (uint16_t)36, (uint16_t)1, &get_data_1);
+//     dxl_wb.readRegister(i+1, (uint16_t)37, (uint16_t)1, &get_data_2);
 
-    // write position
-    Serial.write((int8_t) get_data_1);
-    Serial.write((int8_t) get_data_2);
-  }
-}
+//     // write position
+//     Serial.write((int8_t) get_data_1);
+//     Serial.write((int8_t) get_data_2);
+//   }
+// }

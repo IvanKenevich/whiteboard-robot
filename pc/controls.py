@@ -40,12 +40,12 @@ class MotorController:
             self.s.write(id.to_bytes(1, "little"))
 
     
-    def readPositions(self):
-        while not self.stop_reading:
-            time.sleep(0.5)
-            with self.s_lock:
-                for id in range(self.N_MOTORS):
-                    pos = self.s.read(2)
+    # def readPositions(self):
+    #     while not self.stop_reading:
+    #         time.sleep(0.5)
+    #         with self.s_lock:
+    #             for id in range(self.N_MOTORS):
+    #                 pos = self.s.read(2)
 
 
     def setAngle(self, id: int, angle: float):
@@ -83,6 +83,9 @@ class Robot:
     PATH_LEAD_IN = 5 # centimeters
     PATH_LEAD_OUT = 5 # centimeters
 
+    GRABBER_OPEN_ANGLE = 90 # degrees
+    GRABBER_CLOSED_ANGLE = 0 # degrees
+
     def __init__(self, port = None, baud = None):
         if port is not None and baud is not None:
             self.mc = MotorController(port, baud)
@@ -112,6 +115,8 @@ class Robot:
         ])
         # joint angles at initial position above
         self.thetalist = np.deg2rad(np.array([2, 13, -115, -38, 2]))
+
+        self.grabber_open = True
 
         r1 = np.array([0, 0, 0])
         r2 = np.array([0, -2.35, 3.1])
@@ -153,6 +158,14 @@ class Robot:
             logging.info(f"Successfully solved for T:\n{self.T}")
         else:
             logging.info("IK failed to converge")
+
+    def toggleGrabber(self):
+        if self.grabber_open:
+            self.mc.setAngle(6, self.GRABBER_CLOSED_ANGLE)
+            self.grabber_open = False
+        else:
+            self.mc.setAngle(6, self.GRABBER_OPEN_ANGLE)
+            self.grabber_open = True
 
     def left(self):
         # increment y
