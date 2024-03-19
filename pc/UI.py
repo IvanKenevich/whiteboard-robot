@@ -5,6 +5,8 @@ import time
 from controls import Robot, MotorController
 from UI_utils import Line, Path
 
+from matplotlib import pyplot as plt
+
 class Paint(object):
     LINE_WIDTH = 3
     CANVAS_WIDTH = 1000
@@ -64,7 +66,13 @@ class Paint(object):
 
 
     def draw_letters(self):
-        self.r.planTrajectory(self.paths, self.CANVAS_WIDTH, self.CANVAS_HEIGHT)
+        trajectory, angles = self.r.planTrajectory(self.paths, self.CANVAS_WIDTH, self.CANVAS_HEIGHT)
+        if angles is not None:
+            self.r.executeTrajectory(angles)
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+        ax.scatter(trajectory[0,:], trajectory[1,:], trajectory[2,:])
+        plt.show()
         
 
     def clear_canvas(self):
@@ -80,11 +88,11 @@ class Paint(object):
 
     def mouse_drag(self, event):
         if self.old_x and self.old_y:
-            time.sleep(0.15)
             id = self.c.create_line(self.old_x, self.old_y, event.x, event.y,
                                width=self.LINE_WIDTH, fill='black',
                                capstyle=ROUND, smooth=TRUE, splinesteps=36)
             self.current_path.add(Line(id, self.old_x, self.old_y, event.x, event.y))
+            time.sleep(0.5)
 
         self.old_x = event.x
         self.old_y = event.y

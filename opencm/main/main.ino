@@ -42,7 +42,7 @@ void setup() {
 
   for (int i = 0; i < N_ID; ++i) {
     motor_id = ID[i];
-    uint16_t motor_speed = 100;
+    uint16_t motor_speed = 25;
     dxl_wb.writeRegister(motor_id, (uint16_t) 32, 2, (uint8_t *) &motor_speed);
     if (!result) {
       Serial.println("Failed to set speed.");

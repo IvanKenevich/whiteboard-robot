@@ -49,7 +49,7 @@ class MotorController:
 
 
     def setAngle(self, id: int, angle: float):
-        if (id < 3): # MX-64
+        if (id in [2, 3]): # MX-64
             angle = angle + 180
             pos = self.map(angle, self.MX_64_MINANG, self.MX_64_MAXANG, 0, self.MX_64_MAXPOS)
         else: # AX-12
@@ -80,11 +80,20 @@ class Robot:
     #vector from S to top left corner of whiteboard 
     p_sw = [40.41, 16.04, 25.2] # centimeters
 
-    PATH_LEAD_IN = 5 # centimeters
-    PATH_LEAD_OUT = 5 # centimeters
+    PATH_LEAD_IN = 2 # centimeters
+    PATH_LEAD_OUT = 2 # centimeters
 
     GRABBER_OPEN_ANGLE = 90 # degrees
-    GRABBER_CLOSED_ANGLE = 0 # degrees
+    GRABBER_CLOSED_ANGLE = -2.5 # degrees
+
+    MAX_POINT_DIST = 1   # centimeters, maximum distance between two points in 3d space
+                         # anything below that will be interpolated
+    
+    INITIAL_DRAWING_ANGLES = np.deg2rad(np.array([-5, -5, 109, -14, -5]))
+    INITIAL_DRAWING_POSITION = np.array([38.22, 3.23, 14.63]).reshape(3,1)
+    
+    ANGLE_PRECISION = np.deg2rad(2.5) # precision values for IK solver
+    POSITION_PRECISION = 0.1           # precision values for IK solver
 
     def __init__(self, port = None, baud = None):
         if port is not None and baud is not None:
@@ -93,16 +102,16 @@ class Robot:
             self.mc = None
 
         self.M = np.array([
-            [1, 0, 0, -1.45],
-            [0, 1, 0, 5.48],
-            [0, 0, 1, 59.96],
+            [1, 0, 0, 0.10],
+            [0, 1, 0, 5.23],
+            [0, 0, 1, 58.46],
             [0, 0, 0, 1]
         ])
 
         self.T_sw = np.array([
-            [0,-1, 0,self.p_sw[0]],
-            [0, 0,-1,self.p_sw[1]],
-            [1, 0, 0,self.p_sw[2]],
+            [0, 0, 1,self.p_sw[0]],
+            [-1, 0,0,self.p_sw[1]],
+            [0, -1, 0,self.p_sw[2]],
             [0, 0, 0, 1]
         ])
 
@@ -113,20 +122,18 @@ class Robot:
             [-1, 0, 0,12.86],
             [0, 0, 0, 1]
         ])
-        # joint angles at initial position above
-        self.thetalist = np.deg2rad(np.array([2, 13, -115, -38, 2]))
 
         self.grabber_open = True
 
         r1 = np.array([0, 0, 0])
-        r2 = np.array([0, -2.35, 3.1])
-        r3 = np.array([0, -1.95, 21.3])
-        r4 = np.array([-1.45, -1.95, 36.36])
-        r5 = np.array([-3.85, 0.45, 44.66])
+        r2 = np.array([0, 2.35, 4])
+        r3 = np.array([0, 2.35, 18.5])
+        r4 = np.array([0.10, 2.30, 34.86])
+        r5 = np.array([2.5, 0.2, 43.16])
 
         w1 = np.array([0, 0, 1])
         w2 = np.array([0, 1, 0])
-        w3 = np.array([0, -1, 0])
+        w3 = np.array([0, 1, 0])
         w4 = np.array([0, 1, 0])
         w5 = np.array([1, 0, 0])
 
@@ -169,33 +176,61 @@ class Robot:
 
     def left(self):
         # increment y
-        self.T[1, 3] += 1
+        self.T[1, 3] += 0.5
         self.move_next_point()
 
     def right(self):
         # decrement y
-        self.T[1, 3] -= 1
+        self.T[1, 3] -= 0.5
         self.move_next_point()
 
     def forward(self):
         # increment x
-        self.T[0, 3] += 1
+        self.T[0, 3] += 0.5
         self.move_next_point()
 
     def backward(self):
         # decrement x
-        self.T[0, 3] -= 1
+        self.T[0, 3] -= 0.5
         self.move_next_point()
 
     def up(self):
         # increment z
-        self.T[2, 3] += 1
+        self.T[2, 3] += 0.5
         self.move_next_point()
 
     def down(self):
         # decrement z
-        self.T[2, 3] -= 1
+        self.T[2, 3] -= 0.5
         self.move_next_point()
+
+    def interp3(self, trajectory):
+        new_trajectory = None
+
+        for i in range(trajectory.shape[1] - 1):
+            p1 = trajectory[:,i].copy().reshape(3,1)
+            p2 = trajectory[:,i+1].copy().reshape(3,1)
+            logging.info(f"p1: {p1}  p2: {p2}")
+
+            dist = np.linalg.norm(p2 - p1)
+            if dist < self.MAX_POINT_DIST:
+                logging.info(f"Two points were close enough: {dist}")
+                new_trajectory = np.hstack((p1, p2)) if new_trajectory is None else np.hstack((new_trajectory, p1, p2))
+                continue
+                
+            logging.info(f"Two points were too far apart: {dist}")
+            u = (p2 - p1) / dist
+            nsteps = int(dist // self.MAX_POINT_DIST)
+            logging.info(f"Will create {nsteps} intermediate points")
+
+            for j in range(nsteps + 1):
+                p = p1 + j * self.MAX_POINT_DIST * u
+                new_trajectory = p if new_trajectory is None else np.hstack((new_trajectory, p))
+
+            new_trajectory = np.hstack([new_trajectory, p2])
+        
+        return new_trajectory
+    
 
     def planTrajectory(self, paths: list[Path], CANVAS_WIDTH, CANVAS_HEIGHT):
         trajectory = None
@@ -207,17 +242,24 @@ class Robot:
             # convert to numpy
             points = np.array(points).T
             # apply whiteboard to space transformation
-            points_s = mr.TransInv(self.T_sw) @ points
+            points_s = self.T_sw @ points
             points_s = points_s[0:3, :]
-            # add enter and exit trajectories
+            # add enter and exit points
             first = points_s[:,0].copy(); first[0] -= self.PATH_LEAD_IN
             last = points_s[:,-1].copy(); last[0] -= self.PATH_LEAD_OUT
-            points_s = np.hstack([first[:,None], points_s, last[:,None]])
-            trajectory = points_s if trajectory is None else np.hstack([trajectory, points_s])
+            points_s = np.hstack((first[:,None], points_s, last[:,None]))
+            trajectory = points_s if trajectory is None else np.hstack((trajectory, points_s))
         
+        # add initial point for the solver
+        initial_point = self.INITIAL_DRAWING_POSITION
+        trajectory = np.hstack((initial_point, trajectory))
+
+        # interpolate if points are too far apart
+        trajectory = self.interp3(trajectory)
+
+        # do inverse kinematics
         res = []
-        thetalist0 = np.deg2rad(np.array([-1, 6, -76, -10, -1]))
-        prev_point = np.array([0, 5.48, 60.26])
+        thetalist0 = self.INITIAL_DRAWING_ANGLES
         for i in range(trajectory.shape[1]):
             point = trajectory[:,i]
             T = np.array([
@@ -226,25 +268,46 @@ class Robot:
                 [-1, 0, 0, point[2]],
                 [0, 0, 0, 1]
             ]); logging.info(f"T matrix:\n{T}")
-            eomg = 0.0872
-            ev = 2
+ 
             [thetalist, success] = mr.IKinSpace(
                 np.array([self.S1, self.S2, self.S3, self.S4, self.S5]).T,
                 self.M, T,
                 thetalist0,
-                eomg, ev
+                self.ANGLE_PRECISION, self.POSITION_PRECISION
             )
             if success:
                 thetalist0 = thetalist
-                dt = np.linalg.norm(point - prev_point)
+                logging.info(f"thetalist: {np.rad2deg(thetalist)}")
                 prev_point = point
-                res.append((dt, thetalist))
+                res.append(thetalist)
             else:
-                logging.info(f"Failed to do inverse kinematics at index {i}.\n"
+                logging.info(f"Failed to do inverse kinematics at index {i}/{trajectory.shape[1]}.\n"
                              f"Prev point: {prev_point}\n"
                              f"Current point: {point}\n"
                              f"T matrix: {T}\n"
-                             f"thetalist0: {thetalist0}")
-                return None
+                             f"thetalist0: {np.rad2deg(thetalist0)}")
+                return trajectory, None
             
-        return res
+        return trajectory, res
+    
+
+    def executeTrajectory(self, angles):
+        # go to home position
+        self.mc.setAngles([0] * 5)
+        time.sleep(15)
+
+        # grab the pen
+        self.toggleGrabber()
+        time.sleep(5)
+
+        # go to initial position
+        self.mc.setAngles(list(np.rad2deg(self.INITIAL_DRAWING_ANGLES)))
+        logging.info(f"Going to: {list(np.rad2deg(self.INITIAL_DRAWING_ANGLES))}")
+        time.sleep(15)
+
+        # execute drawing path
+        for angle_set in angles:
+            angle_set = list(np.rad2deg(angle_set))
+            self.mc.setAngles(angle_set)
+            logging.info(f"Going to: {angle_set}")
+            time.sleep(0.5)
