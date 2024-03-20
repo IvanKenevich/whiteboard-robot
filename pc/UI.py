@@ -68,11 +68,13 @@ class Paint(object):
     def draw_letters(self):
         trajectory, angles = self.r.planTrajectory(self.paths, self.CANVAS_WIDTH, self.CANVAS_HEIGHT)
         if angles is not None:
+            fig = plt.figure()
+            ax = fig.add_subplot(projection='3d')
+            ax.scatter(trajectory[0,:], trajectory[1,:], trajectory[2,:])
+            plt.show()
             self.r.executeTrajectory(angles)
-        fig = plt.figure()
-        ax = fig.add_subplot(projection='3d')
-        ax.scatter(trajectory[0,:], trajectory[1,:], trajectory[2,:])
-        plt.show()
+        else:
+            logging.info("Trajectory planning failed")
         
 
     def clear_canvas(self):

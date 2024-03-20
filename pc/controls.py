@@ -78,13 +78,14 @@ class Robot:
     WB_HEIGHT = 25.4 # centimeters
 
     #vector from S to top left corner of whiteboard 
-    p_sw = [40.41, 16.04, 25.2] # centimeters
+    # p_sw = [40.41, 16.04, 25.2] # centimeters
+    p_sw = [40.41, 16.04, 25.2 + 1 * 2.54] # centimeters
 
     PATH_LEAD_IN = 2 # centimeters
     PATH_LEAD_OUT = 2 # centimeters
 
     GRABBER_OPEN_ANGLE = 90 # degrees
-    GRABBER_CLOSED_ANGLE = -2.5 # degrees
+    GRABBER_CLOSED_ANGLE = -0.35 # degrees
 
     MAX_POINT_DIST = 1   # centimeters, maximum distance between two points in 3d space
                          # anything below that will be interpolated
@@ -294,16 +295,16 @@ class Robot:
     def executeTrajectory(self, angles):
         # go to home position
         self.mc.setAngles([0] * 5)
-        time.sleep(15)
+        time.sleep(7)
 
         # grab the pen
         self.toggleGrabber()
-        time.sleep(5)
+        time.sleep(7)
 
         # go to initial position
         self.mc.setAngles(list(np.rad2deg(self.INITIAL_DRAWING_ANGLES)))
         logging.info(f"Going to: {list(np.rad2deg(self.INITIAL_DRAWING_ANGLES))}")
-        time.sleep(15)
+        time.sleep(7)
 
         # execute drawing path
         for angle_set in angles:

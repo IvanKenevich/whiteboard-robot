@@ -15,4 +15,4 @@ if __name__ == '__main__':
 
     # mc = MotorController("COM7", 57600)
     # Paint("COM7", 57600)
-    Paint(None, None)
+    Paint("COM7", 57600)
